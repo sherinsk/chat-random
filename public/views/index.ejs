@@ -4,23 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Socket.IO Device ID Connection</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <h1>Enter Device ID</h1>
-    <form id="deviceForm">
-        <input type="text" id="deviceIdInput" placeholder="Enter Device ID" required>
-        <button type="submit">Connect</button>
-    </form>
+    <div class="container d-flex justify-content-center align-items-center min-vh-100">
+        <div class="card shadow p-4" style="width: 100%; max-width: 400px;">
+            <h1 class="card-title text-center mb-4">Connect with Device ID</h1>
+            <form id="deviceForm" class="form mb-3">
+                <div class="form-group">
+                    <input type="text" id="deviceIdInput" class="form-control" placeholder="Enter Device ID" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Connect</button>
+            </form>
 
-    <div id="status"></div>
+            <div id="status" class="alert alert-info text-center" style="display: none;"></div>
 
-    <div id="chatContainer" style="display: none;">
-        <div id="messages"></div>
-        <form id="messageForm">
-            <input type="text" id="messageInput" placeholder="Type a message" required>
-            <button type="submit">Send</button>
-        </form>
-        <button id="skipButton">Skip</button>
+            <div id="chatContainer" class="mt-4" style="display: none;">
+                <div id="messages" class="border rounded p-3 mb-3" style="height: 200px; overflow-y: auto;"></div>
+                <form id="messageForm" class="input-group">
+                    <input type="text" id="messageInput" class="form-control" placeholder="Type a message" required>
+                    <div class="input-group-append">
+                        <button type="submit" class="btn btn-primary">Send</button>
+                    </div>
+                </form>
+            </div>
+
+            <button id="skipButton" class="btn btn-secondary btn-block mt-3" style="display: none;">Skip</button>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -42,7 +53,9 @@
             currentRoom = room;
             console.log('Joined room:', room);
             document.getElementById('status').innerText = `Joined room: ${room}`;
+            document.getElementById('status').style.display = 'block';
             document.getElementById('chatContainer').style.display = 'block';
+            document.getElementById('skipButton').style.display = 'block';
         });
 
         // Handle message form submission
@@ -58,6 +71,7 @@
         socket.on('searching', function() {
             console.log('Searching for a user to pair...');
             document.getElementById('status').innerText = 'Searching for a user to pair...';
+            document.getElementById('status').style.display = 'block';
         });
 
         // Update status and display chat container when paired
@@ -65,7 +79,6 @@
             currentRoom = room;
             socket.emit('joinRoom', room);
         });
-
 
         // Display received messages
         socket.on('message', function(data) {
@@ -92,12 +105,16 @@
         socket.on('connectionDenied', function(data) {
             console.log('Connection denied:', data);
             document.getElementById('status').innerText = `Connection denied: ${data.message}`;
+            document.getElementById('status').classList.replace('alert-info', 'alert-danger');
+            document.getElementById('status').style.display = 'block';
         });
 
         // Handle user disconnection
         socket.on('userDisconnected', function(data) {
             console.log('User disconnected:', data);
             document.getElementById('status').innerText = data.message;
+            document.getElementById('status').classList.replace('alert-info', 'alert-warning');
+            document.getElementById('status').style.display = 'block';
         });
 
         // Skip button functionality
@@ -106,6 +123,7 @@
                 console.log('Skipping room:', currentRoom);
                 socket.emit('skip', currentRoom);
                 document.getElementById('status').innerText = 'Skipping to a new user...';
+                document.getElementById('status').classList.replace('alert-info', 'alert-secondary');
             }
         });
 
