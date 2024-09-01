@@ -232,7 +232,7 @@ const io = new Server(server, {
         {
             const messageDetails={message,deviceId}
             io.to(room).emit('message',messageDetails)
-            console.log(`sending message to ${room} by ${deviceId}:${message}`)
+            console.log(`sending messagee to ${room} by ${deviceId}:${message}`)
         } 
         catch (error) {
           console.error('Error sending message:', error);
