@@ -262,7 +262,6 @@ io.on('connection', (socket) => {
       if(room)
       {
       const socketsInRoom = await io.in(room).fetchSockets();
-      console.log(socketsInRoom)
       const socketIds = socketsInRoom.map(socketInRoom => socketInRoom.id);
       console.log(socketIds)
       const oppositeSocketId = socketIds.find(id => id !== socket.id);
