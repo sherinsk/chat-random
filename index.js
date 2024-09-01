@@ -270,6 +270,7 @@ io.on('connection', (socket) => {
         message: `Socket ${currentSocketId} has disconnected from the room.`,
       });
       }
+      socket.leave(room)
       socket.disconnect()
     } catch (error) {
       console.error('Error during disconnect:', error);
