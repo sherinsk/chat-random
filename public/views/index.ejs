@@ -33,12 +33,14 @@
         document.getElementById('deviceForm').addEventListener('submit', function(e) {
             e.preventDefault();
             deviceId = document.getElementById('deviceIdInput').value;
+            console.log('Registering or joining with deviceId:', deviceId);
             socket.emit('registerorjoin', deviceId);
         });
 
         // Handle successful room joining
         socket.on('joined', function(room) {
             currentRoom = room;
+            console.log('Joined room:', room);
             document.getElementById('status').innerText = `Joined room: ${room}`;
             document.getElementById('chatContainer').style.display = 'block';
         });
@@ -47,24 +49,28 @@
         document.getElementById('messageForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const message = document.getElementById('messageInput').value;
+            console.log('Sending message:', message, 'to room:', currentRoom);
             socket.emit('message', { message, deviceId, room: currentRoom });
             document.getElementById('messageInput').value = '';
         });
 
         // Display searching status
         socket.on('searching', function() {
+            console.log('Searching for a user to pair...');
             document.getElementById('status').innerText = 'Searching for a user to pair...';
         });
 
         // Update status and display chat container when paired
         socket.on('roomReady', function(room) {
             currentRoom = room;
+            console.log('Paired in room:', room);
             document.getElementById('status').innerText = `Paired in room: ${room}`;
             document.getElementById('chatContainer').style.display = 'block';
         });
 
         // Display received messages
         socket.on('message', function(data) {
+            console.log('Received message:', data);
             const { message, deviceId } = data;
             const messageElement = document.createElement('p');
             messageElement.innerText = `${deviceId}: ${message}`;
@@ -73,27 +79,32 @@
 
         // Clear chat messages
         socket.on('clearChat', function() {
+            console.log('Clearing chat');
             document.getElementById('messages').innerHTML = '';
         });
 
         // Show rejoin status
         socket.on('reJoin', function() {
+            console.log('Rejoining...');
             document.getElementById('status').innerText = 'Rejoining...';
         });
 
         // Handle connection denial
         socket.on('connectionDenied', function(data) {
+            console.log('Connection denied:', data);
             document.getElementById('status').innerText = `Connection denied: ${data.message}`;
         });
 
         // Handle user disconnection
         socket.on('userDisconnected', function(data) {
+            console.log('User disconnected:', data);
             document.getElementById('status').innerText = data.message;
         });
 
         // Skip button functionality
         document.getElementById('skipButton').addEventListener('click', function() {
             if (currentRoom) {
+                console.log('Skipping room:', currentRoom);
                 socket.emit('skip', currentRoom);
                 document.getElementById('status').innerText = 'Skipping to a new user...';
             }
@@ -102,6 +113,7 @@
         // Handle page unload
         window.addEventListener('beforeunload', function(e) {
             if (currentRoom) {
+                console.log('Disconnecting room:', currentRoom);
                 socket.emit('disconnectRoom', currentRoom);
             }
         });
