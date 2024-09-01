@@ -63,10 +63,9 @@
         // Update status and display chat container when paired
         socket.on('roomReady', function(room) {
             currentRoom = room;
-            console.log('Paired in room:', room);
-            document.getElementById('status').innerText = `Paired in room: ${room}`;
-            document.getElementById('chatContainer').style.display = 'block';
+            socket.emit('joinRoom', room);
         });
+
 
         // Display received messages
         socket.on('message', function(data) {
