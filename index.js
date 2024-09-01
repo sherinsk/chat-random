@@ -231,6 +231,7 @@ const io = new Server(server, {
         try 
         {
             const messageDetails={message,deviceId}
+            socket.join(room)
             io.to(room).emit('message',messageDetails)
             console.log(`sending messagee to ${room} by ${deviceId}:${message}`)
         } 
