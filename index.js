@@ -264,7 +264,7 @@ io.on('connection', (socket) => {
       console.log(socketsInRoom)
       const socketIds = socketsInRoom.map(socketInRoom => socketInRoom.id);
       console.log(socketIds)
-      const oppositeSocketId = socketIds.find(id => id !== currentSocketId);
+      const oppositeSocketId = socketIds.find(id => id !== socket.id);
       console.log(oppositeSocketId)
       io.to(oppositeSocketId).emit('userDisconnected', {
         message: `Socket ${currentSocketId} has disconnected from the room.`,
