@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Device ID Connection</title>
+</head>
+<body>
+    <h1>Enter Device ID</h1>
+    <form id="deviceForm">
+        <input type="text" id="deviceIdInput" placeholder="Enter Device ID" required>
+        <button type="submit">Connect</button>
+    </form>
+
+    <div id="status"></div>
+
+    <div id="chatContainer" style="display: none;">
+        <div id="messages"></div>
+        <form id="messageForm">
+            <input type="text" id="messageInput" placeholder="Type a message" required>
+            <button type="submit">Send</button>
+        </form>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    let currentRoom = '';
+    let deviceId = '';
+
+    document.getElementById('deviceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        deviceId = document.getElementById('deviceIdInput').value;
+        socket.emit('registerorjoin', deviceId);
+    });
+
+    socket.on('joined', function(room) {
+        currentRoom = room;
+        document.getElementById('status').innerText = `Joined room: ${room}`;
+        document.getElementById('chatContainer').style.display = 'block';
+    });
+
+    document.getElementById('messageForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const message = document.getElementById('messageInput').value;
+            socket.emit('message', { message, deviceId: deviceId, room: currentRoom,});
+            document.getElementById('messageInput').value = '';
+        });
+
+    socket.on('searching', function() {
+        document.getElementById('status').innerText = 'Searching for a user to pair...';
+    });
+
+    socket.on('roomReady', function(room) {
+        currentRoom = room;
+        document.getElementById('status').innerText = `Paired in room: ${room}`;
+        document.getElementById('chatContainer').style.display = 'block';
+    });
+
+    socket.on('message', function(data) {
+        const { message, deviceId } = data;
+        const messageElement = document.createElement('p');
+        messageElement.innerText = `${deviceId}: ${message}`;
+        document.getElementById('messages').appendChild(messageElement);
+    });
+
+    socket.on('clearChat', function() {
+        document.getElementById('messages').innerHTML = '';
+    });
+
+    socket.on('reJoin', function() {
+        document.getElementById('status').innerText = 'Rejoining...';
+    });
+
+    socket.on('connectionDenied', function(data) {
+        document.getElementById('status').innerText = `Connection denied: ${data.message}`;
+    });
+
+    socket.on('userDisconnected', function(data) {
+        document.getElementById('status').innerText = data.message;
+    });
+
+    window.addEventListener('beforeunload', function(e) {
+        if (currentRoom) {
+            socket.emit('disconnectRoom', currentRoom);
+        }
+    });
+</script>
+</body>
+</html>
