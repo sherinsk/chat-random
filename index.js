@@ -266,9 +266,14 @@ io.on('connection', (socket) => {
       console.log(socketIds)
       const oppositeSocketId = socketIds.find(id => id !== socket.id);
       console.log(oppositeSocketId)
+
+      io.to(oppositeSocketId).emit('clearChat');
+      io.to(oppositeSocketId).emit('reJoin',room);
+      
       io.to(oppositeSocketId).emit('userDisconnected', {
         message: `Socket ${socket.id} has disconnected from the room.`,
       });
+
       }
       socket.leave(room)
       socket.disconnect()
