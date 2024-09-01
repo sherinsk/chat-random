@@ -267,7 +267,7 @@ io.on('connection', (socket) => {
       const oppositeSocketId = socketIds.find(id => id !== socket.id);
       console.log(oppositeSocketId)
       io.to(oppositeSocketId).emit('userDisconnected', {
-        message: `Socket ${currentSocketId} has disconnected from the room.`,
+        message: `Socket ${socket.id} has disconnected from the room.`,
       });
       }
       socket.leave(room)
