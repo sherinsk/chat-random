@@ -108,8 +108,8 @@
         });
 
         // Show rejoin status
-        socket.on('reJoin', function() {
-            console.log('Rejoining...');
+        socket.on('reJoin', function(room) {
+            socket.emit('reJoin', deviceId, currentRoom);
             document.getElementById('status').innerText = 'Rejoining...';
         });
 
