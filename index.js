@@ -238,6 +238,7 @@ io.on('connection', (socket) => {
 
         const receiverSocketId = userSocketMap.get(receiverId);
         const isDeleted = userSocketMap.delete(receiverId);
+        console.log(isDeleted)
 
         if (isDeleted) {
           await prisma.deviceid.updateMany({
