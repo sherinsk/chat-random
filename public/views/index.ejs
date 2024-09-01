@@ -67,6 +67,27 @@
             document.getElementById('messageInput').value = '';
         });
 
+        // Display received messages
+        socket.on('message', function(data) {
+            console.log('Received message:', data);
+            const { message, deviceId: senderDeviceId } = data;
+            const messageElement = document.createElement('div');
+            const senderName = senderDeviceId === deviceId ? 'You' : senderDeviceId;
+            
+            messageElement.innerHTML = `<strong>${senderName}:</strong> ${message}`;
+            messageElement.classList.add('p-2', 'mb-2', 'rounded', 'text-white');
+
+            // Apply different styles based on the sender
+            if (senderDeviceId === deviceId) {
+                messageElement.classList.add('bg-primary', 'text-right');
+            } else {
+                messageElement.classList.add('bg-secondary', 'text-left');
+            }
+
+            document.getElementById('messages').appendChild(messageElement);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight; // Auto-scroll to the latest message
+        });
+
         // Display searching status
         socket.on('searching', function() {
             console.log('Searching for a user to pair...');
@@ -78,15 +99,6 @@
         socket.on('roomReady', function(room) {
             currentRoom = room;
             socket.emit('joinRoom', room);
-        });
-
-        // Display received messages
-        socket.on('message', function(data) {
-            console.log('Received message:', data);
-            const { message, deviceId } = data;
-            const messageElement = document.createElement('p');
-            messageElement.innerText = `${deviceId}: ${message}`;
-            document.getElementById('messages').appendChild(messageElement);
         });
 
         // Clear chat messages
