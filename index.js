@@ -256,15 +256,18 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('disconnect', async () => {
+  socket.on('disconnectRoom', async (room) => {
     try {
-      console.log(`Socket ${socket.id} disconnected`);
-      for (let [deviceId, socketId] of userSocketMap) {
-        if (socketId === socket.id) {
-          userSocketMap.delete(deviceId);
-          console.log(`Device ${deviceId} removed from userSocketMap`);
-        }
+      if(room)
+      {
+      const socketsInRoom = await io.in(room).fetchSockets();
+      const socketIds = socketsInRoom.map(socketInRoom => socketInRoom.id);
+      const oppositeSocketId = socketIds.find(id => id !== currentSocketId);
+      io.to(oppositeSocketId).emit('userDisconnected', {
+        message: `Socket ${currentSocketId} has disconnected from the room.`,
+      });
       }
+      socket.disconnect()
     } catch (error) {
       console.error('Error during disconnect:', error);
     }
