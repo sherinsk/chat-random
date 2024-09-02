@@ -267,7 +267,6 @@ io.on('connection', (socket) => {
       if (key) {
         console.log(`Stopping search for user: ${key}`);
         userSocketMap.delete(key);
-        socket.removeAllListeners();
         socket.emit('stoppedSearch');
       } else {
         console.log('No matching key found for the current socket.');
@@ -305,7 +304,6 @@ io.on('connection', (socket) => {
       }
       socket.leave(room)
       socket.disconnect()
-      socket.removeAllListeners();
     } catch (error) {
       console.error('Error during disconnect:', error);
     }
