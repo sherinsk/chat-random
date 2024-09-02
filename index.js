@@ -125,7 +125,7 @@ io.on('connection', (socket) => {
         const currentDate = new Date();
 
         if (device.blockedUntil && currentDate < device.blockedUntil) {
-          console.log(`Device ${deviceId} is blocked until ${device.blockedUntil}. Connection denied.`);
+          console.log(`Device ${deviceId} is blockedd until ${device.blockedUntil}. Connection denied.`);
           socket.emit('connectionDenied', { message: 'Your device is blocked' });
           return;
         } else {
