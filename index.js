@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const { PrismaClient } = require('@prisma/client');
+const findKeyByValue = require('./utilityfunctions/utils.js');
 
 const prisma = new PrismaClient();
 const app = express();
@@ -22,6 +23,8 @@ app.set('view engine', 'ejs');
 app.get('/', (req, res) => {
   res.render('index');
 });
+
+
 
 // API Endpoints
 app.post('/api/deviceid', async (req, res) => {
@@ -257,8 +260,31 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('stopSearch', () => {
+    try {
+      const key = findKeyByValue(userSocketMap, socket.id);
+      if (key) {
+        console.log(`Stopping search for user: ${key}`);
+        userSocketMap.delete(key);
+        socket.emit('stoppedSearch');
+      } else {
+        console.log('No matching key found for the current socket.');
+        // Optionally, you can notify the client about this case.
+      }
+    } catch (err) {
+      console.error('Error during stopSearch:', err);
+    }
+  });
+  
+
   socket.on('disconnectRoom', async (room) => {
     try {
+      const key=findKeyByValue(userSocketMap, socket.id)
+      if(key)
+      {
+        console.log(key)
+        userSocketMap.delete(key)
+      }
       if(room)
       {
       const socketsInRoom = await io.in(room).fetchSockets();

@@ -37,7 +37,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let currentRoom = '';
+        let currentRoom;
         let deviceId = '';
 
         // Handle device ID form submission
@@ -141,10 +141,8 @@
 
         // Handle page unload
         window.addEventListener('beforeunload', function(e) {
-            if (currentRoom) {
                 console.log('Disconnecting room:', currentRoom);
                 socket.emit('disconnectRoom', currentRoom);
-            }
         });
     </script>
 </body>
