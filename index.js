@@ -179,7 +179,7 @@ io.on('connection', (socket) => {
     try {
       console.log(`Received message for room ${room}:`, { message, deviceId });
       io.to(room).emit('message', { message, deviceId });
-      console.log(`Message sent to room ${room}: ${message}`);
+      console.log(`Message sentt to room ${room}: ${message}`);
     } catch (error) {
       console.error('Error sending message:', error);
     }
