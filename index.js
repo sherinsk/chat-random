@@ -118,9 +118,6 @@ io.on('connection', (socket) => {
 
   socket.on('registerorjoin', async (deviceId) => {
     try {
-
-      socket.removeAllListeners('message');
-
       const device = await prisma.deviceid.findUnique({ where: { deviceid: deviceId } });
       const senderId = device.id;
 
