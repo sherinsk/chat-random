@@ -24,8 +24,6 @@ app.get('/', (req, res) => {
   res.render('index');
 });
 
-
-
 // API Endpoints
 app.post('/api/deviceid', async (req, res) => {
   try {
@@ -125,7 +123,7 @@ io.on('connection', (socket) => {
         const currentDate = new Date();
 
         if (device.blockedUntil && currentDate < device.blockedUntil) {
-          console.log(`Device ${deviceId} is blockedd until ${device.blockedUntil}. Connection denied.`);
+          console.log(`Device ${deviceId} is blocked until ${device.blockedUntil}. Connection denied.`);
           socket.emit('connectionDenied', { message: 'Your device is blocked' });
           return;
         } else {
@@ -179,7 +177,7 @@ io.on('connection', (socket) => {
     try {
       console.log(`Received message for room ${room}:`, { message, deviceId });
       io.to(room).emit('message', { message, deviceId });
-      console.log(`Message sentt to room ${room}: ${message}`);
+      console.log(`Message sent to room ${room}: ${message}`);
     } catch (error) {
       console.error('Error sending message:', error);
     }
@@ -260,62 +258,24 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('stopSearch', () => {
+  socket.on('disconnect', async () => {
+    console.log(`Socket ${socket.id} disconnected`);
     try {
-      const key = findKeyByValue(userSocketMap, socket.id);
-      console.log(key)
-      if (key) {
-        console.log(`Stopping search for user: ${key}`);
-        userSocketMap.delete(key);
-        socket.emit('stoppedSearch');
-      } else {
-        console.log('No matching key found for the current socket.');
-        // Optionally, you can notify the client about this case.
+      const deviceId = findKeyByValue(userSocketMap, socket.id);
+      if (deviceId) {
+        userSocketMap.delete(deviceId);
       }
-    } catch (err) {
-      console.error('Error during stopSearch:', err);
-    }
-  });
-  
-
-  socket.on('disconnectRoom', async (room) => {
-    try {
-      const key=findKeyByValue(userSocketMap, socket.id)
-      if(key)
-      {
-        console.log(key)
-        userSocketMap.delete(key)
-      }
-      if(room)
-      {
-      const socketsInRoom = await io.in(room).fetchSockets();
-      const socketIds = socketsInRoom.map(socketInRoom => socketInRoom.id);
-      console.log(socketIds)
-      const oppositeSocketId = socketIds.find(id => id !== socket.id);
-      console.log(oppositeSocketId)
-
-      io.to(oppositeSocketId).emit('clearChat');
-      io.to(oppositeSocketId).emit('reJoin',room);
-      
-      io.to(oppositeSocketId).emit('userDisconnected', {
-        message: `Socket ${socket.id} has disconnected from the room.`,
+      await prisma.deviceid.update({
+        where: { id: parseInt(deviceId) },
+        data: { available: false }
       });
-
-      }
-      socket.leave(room)
-      socket.disconnect()
-    } catch (error) {
-      console.error('Error during disconnect:', error);
+    } catch (err) {
+      console.error('Error handling disconnect:', err);
     }
-  });
-
-  socket.on('error', (error) => {
-    console.error('Socket error:', error);
   });
 });
 
-// Start Server
-const PORT = process.env.PORT || 3000;
+const PORT = 5000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
