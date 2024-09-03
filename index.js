@@ -256,7 +256,7 @@ io.on('connection', (socket) => {
         io.to(socket.id).emit('searching');
       }
     } catch (error) {
-      console.error('Error during reJoin:', error);
+      console.error('Error durring reJoin:', error);
     }
   });
 
