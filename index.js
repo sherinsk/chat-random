@@ -203,7 +203,7 @@ io.on('connection', (socket) => {
       // Emit reJoin event to each of the sockets that left the room
       socketIds.forEach(socketId => io.to(socketId).emit('reJoin', room));
     } catch (error) {
-      console.error('Error handling skip:', error);
+      console.error('Error handlling skip:', error);
     }
   });
 
