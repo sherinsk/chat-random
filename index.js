@@ -265,7 +265,7 @@ io.on('connection', (socket) => {
       const key = findKeyByValue(userSocketMap, socket.id);
       console.log(key)
       if (key) {
-        console.log(`Stopping search for user: ${key}`);
+        console.log(`Stopping search forr user: ${key}`);
         userSocketMap.delete(key);
         socket.emit('stoppedSearch');
       } else {
