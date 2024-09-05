@@ -117,7 +117,7 @@ io.on('connection', (socket) => {
   console.log(`A user connected: ${socket.id}`);
 
   socket.on('registerorjoin', async (deviceId) => {
-    try { 
+    try {
       const device = await prisma.deviceid.findUnique({ where: { deviceid: deviceId } });
       const senderId = device.id;
 
@@ -125,7 +125,7 @@ io.on('connection', (socket) => {
         const currentDate = new Date();
 
         if (device.blockedUntil && currentDate < device.blockedUntil) {
-          console.log(`Device ${deviceId} is blockedd until ${device.blockedUntil}. Connection denied.`);
+          console.log(`Device ${deviceId} is blocked until ${device.blockedUntil}. Connection denied.`);
           socket.emit('connectionDenied', { message: 'Your device is blocked' });
           return;
         } else {
@@ -133,43 +133,47 @@ io.on('connection', (socket) => {
             where: { deviceid: deviceId },
             data: { blocked: false, blockedUntil: null }
           });
-          console.log(`Devicee ${deviceId} has been unblocked.`);
+          console.log(`Device ${deviceId} has been unblocked.`);
         }
       }
 
-      console.log(userSocketMap)
-      var connectedUsers = Array.from(userSocketMap.keys());
-      console.log(connectedUsers)
-      console.log(`number of users connected in joining : ${connectedUsers.length}`)
+      const connectedUsers = Array.from(userSocketMap.keys());
+      console.log(`Number of users connected in joining: ${connectedUsers.length}`);
+
       if (connectedUsers.length > 0) {
-        console.log(connectedUsers)
         const randomIndex = Math.floor(Math.random() * connectedUsers.length);
-        console.log(`Random index : ${randomIndex}`)
         const receiverId = connectedUsers[randomIndex];
-        if(receiverId!==senderId)
-        {
-        const room = [senderId, receiverId].sort().join('-');
-        socket.join(room);
-        io.to(socket.id).emit('joined', room);
-        console.log(`Socket ${socket.id} has joined the room ${room}`);
 
-        const receiverSocketId = userSocketMap.get(receiverId);
-        const isDeleted = userSocketMap.delete(receiverId);
+        if (receiverId !== senderId) {
+          const room = [senderId, receiverId].sort().join('-');
 
-        if (isDeleted) {
-          await prisma.deviceid.updateMany({
-            where: { id: { in: [parseInt(senderId), parseInt(receiverId)] } },
-            data: { available: false },
-          });
-          io.to(receiverSocketId).emit('roomReady', room);
-        }
+          // Check if socket is in any room
+          if (socket.rooms.size === 1) {
+            // Socket is not in any room, so join the room
+            socket.join(room);
+            io.to(socket.id).emit('joined', room);
+
+            const receiverSocketId = userSocketMap.get(receiverId);
+            const isDeleted = userSocketMap.delete(receiverId);
+
+            if (isDeleted) {
+              await prisma.deviceid.updateMany({
+                where: { id: { in: [parseInt(senderId), parseInt(receiverId)] } },
+                data: { available: false },
+              });
+              io.to(receiverSocketId).emit('roomReady', room);
+            }
+          } else {
+            console.log(`Socket ${socket.id} is already in a room`);
+            io.to(socket.id).emit('alreadyInRoom');
+          }
         }
       } else {
-        userSocketMap.set(senderId, socket.id);
-        var usersWaiting = Array.from(userSocketMap.keys());
-        console.log(`user is set to wait:${usersWaiting} in the map, current user set is ${senderId}`)
-        console.log("Now, Searching for a user to pair");
-        io.to(socket.id).emit('searching');
+        // Only add to map if not already in a room
+        if (socket.rooms.size === 1) {
+          userSocketMap.set(senderId, socket.id);
+          io.to(socket.id).emit('searching');
+        }
       }
     } catch (error) {
       console.error('Error during join:', error);
@@ -178,9 +182,15 @@ io.on('connection', (socket) => {
 
   socket.on('joinRoom', (room) => {
     try {
-      socket.join(room);
-      console.log(`Socket ${socket.id} joined room ${room}`);
-      io.to(socket.id).emit('joined', room);
+      // Check if socket is in any room
+      if (socket.rooms.size === 1) {
+        // Socket is not in any room, so join the room
+        socket.join(room);
+        io.to(socket.id).emit('joined', room);
+      } else {
+        console.log(`Socket ${socket.id} is already in a room`);
+        io.to(socket.id).emit('alreadyInRoom');
+      }
     } catch (err) {
       console.error('Error joining room:', err);
     }
@@ -228,13 +238,12 @@ io.on('connection', (socket) => {
   socket.on('reJoin', async (deviceId, room) => {
     try {
       const device = await prisma.deviceid.findUnique({ where: { deviceid: deviceId } });
-      var senderId = device.id;
+      const senderId = device.id;
 
       if (device && device.blocked) {
         const currentDate = new Date();
 
         if (device.blockedUntil && currentDate < device.blockedUntil) {
-          console.log(`Device ${deviceId} is blocked until ${device.blockedUntil}. Connection denied.`);
           socket.emit('connectionDenied', { message: 'Your device is blocked' });
           return;
         } else {
@@ -242,48 +251,49 @@ io.on('connection', (socket) => {
             where: { deviceid: deviceId },
             data: { blocked: false, blockedUntil: null }
           });
-          console.log(`Device ${deviceId} has been unblocked.`);
         }
       }
 
       let connectedUsers = Array.from(userSocketMap.keys());
       const previousUsers = room.split('-').map(part => parseInt(part, 10));
       connectedUsers = connectedUsers.filter(item => !previousUsers.includes(item));
-      console.log(connectedUsers)
-      console.log(`number of users connected in rejoin: ${connectedUsers.length}`)
 
       if (connectedUsers.length > 0) {
         const randomIndex = Math.floor(Math.random() * connectedUsers.length);
-        console.log(`Random index in rejoining: ${randomIndex}`)
-        var receiverId = connectedUsers[randomIndex];
-        if(senderId!==receiverId)
-        {
-        const newRoom = [senderId, receiverId].sort().join('-');
-        socket.join(newRoom);
-        io.to(socket.id).emit('joined', newRoom);
-        console.log(`Socket ${socket.id} has rejoined the room ${newRoom}`);
+        const receiverId = connectedUsers[randomIndex];
+        if (senderId !== receiverId) {
+          const newRoom = [senderId, receiverId].sort().join('-');
 
-        const receiverSocketId = userSocketMap.get(receiverId);
-        const isDeleted = userSocketMap.delete(receiverId);
-        console.log(isDeleted)
+          // Check if socket is in any room
+          if (socket.rooms.size === 1) {
+            // Socket is not in any room, so join the new room
+            socket.join(newRoom);
+            io.to(socket.id).emit('joined', newRoom);
 
-        if (isDeleted) {
-          await prisma.deviceid.updateMany({
-            where: { id: { in: [parseInt(senderId), parseInt(receiverId)] } },
-            data: { available: false },
-          });
-          io.to(receiverSocketId).emit('roomReady', newRoom);
-        }
+            const receiverSocketId = userSocketMap.get(receiverId);
+            const isDeleted = userSocketMap.delete(receiverId);
+
+            if (isDeleted) {
+              await prisma.deviceid.updateMany({
+                where: { id: { in: [parseInt(senderId), parseInt(receiverId)] } },
+                data: { available: false },
+              });
+              io.to(receiverSocketId).emit('roomReady', newRoom);
+            }
+          } else {
+            console.log(`Socket ${socket.id} is already in a room`);
+            io.to(socket.id).emit('alreadyInRoom');
+          }
         }
       } else {
-        userSocketMap.set(senderId, socket.id);
-        var usersWaiting = Array.from(userSocketMap.keys());
-        console.log(`user is set to wait:${usersWaiting} in the map, current user set is ${senderId}`)
-        console.log("Now, Searching for a user to pair");
-        io.to(socket.id).emit('searching');
+        // Only add to map if not already in a room
+        if (socket.rooms.size === 1) {
+          userSocketMap.set(senderId, socket.id);
+          io.to(socket.id).emit('searching');
+        }
       }
     } catch (error) {
-      console.error('Error durring reJoin:', error);
+      console.error('Error during reJoin:', error);
     }
   });
 

@@ -48,6 +48,14 @@
             socket.emit('registerorjoin', deviceId);
         });
 
+        socket.on('alreadyInRoom', function() {
+            console.log('This user is already in a room');
+            document.getElementById('status').innerText = 'This user is in already in a room';
+            document.getElementById('status').style.display = 'block';
+            document.getElementById('chatContainer').style.display = 'none';
+            document.getElementById('skipButton').style.display = 'none';
+        });
+
         // Handle successful room joining
         socket.on('joined', function(room) {
             currentRoom = room;
@@ -93,6 +101,8 @@
             console.log('Searching for a user to pair...');
             document.getElementById('status').innerText = 'Searching for a user to pair...';
             document.getElementById('status').style.display = 'block';
+            document.getElementById('chatContainer').style.display = 'none';
+            document.getElementById('skipButton').style.display = 'none';
         });
 
         // Update status and display chat container when paired
