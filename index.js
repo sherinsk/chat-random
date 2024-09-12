@@ -102,10 +102,10 @@ app.post('/api/deviceid/report', async (req, res) => {
         }
       });
 
-      console.log(`Device ${deviceid} has been blocked for 10 days`);
+      console.log(`Device ${deviceid} has been blocked for 10 days....`);
     }
 
-    res.status(200).json({ message: 'Device reported successfully' });
+    res.status(200).json({ message: 'Device reported successfully....' });
   } catch (error) {
     console.error('Error reporting device:', error);
     res.status(500).json({ error: 'Internal server error' });
