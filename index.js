@@ -143,6 +143,8 @@ io.on('connection', (socket) => {
       if (connectedUsers.length > 0) {
         const randomIndex = Math.floor(Math.random() * connectedUsers.length);
         const receiverId = connectedUsers[randomIndex];
+        console.log("SenderId",senderId)
+        console.log("receiverId",receiverId)
 
         if (receiverId !== senderId) {
           const room = [senderId, receiverId].sort().join('-');
@@ -151,7 +153,9 @@ io.on('connection', (socket) => {
           if (socket.rooms.size === 1) {
             // Socket is not in any room, so join the room
             socket.join(room);
+            console.log("SenderId joined in the room",room)
             io.to(socket.id).emit('joined', room);
+
 
             const receiverSocketId = userSocketMap[receiverId]; // Accessing value using bracket notation
             if(receiverSocketId)
@@ -174,7 +178,9 @@ io.on('connection', (socket) => {
         // Only add to map if not already in a room
         if (socket.rooms.size === 1) {
           userSocketMap[senderId] = socket.id;  // For Object
+          console.log(userSocketMap)
           io.to(socket.id).emit('searching');
+          console.log("Searching for a user to pair....")
         }
       }
     } catch (error) {
@@ -188,6 +194,7 @@ io.on('connection', (socket) => {
       if (socket.rooms.size === 1) {
         // Socket is not in any room, so join the room
         socket.join(room);
+        console.log("Receiver joined the room",room)
         io.to(socket.id).emit('joined', room);
       } else {
         console.log(`Socket ${socket.id} is already in a room`);
