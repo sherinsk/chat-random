@@ -314,7 +314,7 @@ io.on('connection', (socket) => {
       const key = findKeyByValue(userSocketMap, socket.id);
       if (key) {
         var usersWaiting = Object.keys(userSocketMap);
-        console.log(`${key} to stop searchc for the ${socket.id}, usersWaiting : ${usersWaiting}`)
+        console.log(`${key} to stop search for the ${socket.id}, usersWaiting : ${usersWaiting}`)
         console.log(`Stopping search for user: ${key}`);
         delete userSocketMap[key];
         usersWaiting = Object.keys(userSocketMap);
