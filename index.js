@@ -293,7 +293,7 @@ io.on('connection', (socket) => {
       } else {
         // Only add to map if not already in a room
         if (socket.rooms.size === 1) {
-          userSocketMap.set(senderId, socket.id);
+          userSocketMap[senderId] = socket.id;
           io.to(socket.id).emit('searching');
         }
       }
