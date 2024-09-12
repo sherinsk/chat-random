@@ -14,7 +14,7 @@ const io = new Server(server, {
   }
 });
 
-var userSocketMap = new Map();
+var userSocketMap = {};
 
 app.use(express.json());
 app.set('views', __dirname + '/public/views');
@@ -137,7 +137,7 @@ io.on('connection', (socket) => {
         }
       }
 
-      const connectedUsers = Array.from(userSocketMap.keys());
+      const connectedUsers = Object.keys(userSocketMap);
       console.log(`Number of users connected in joining: ${connectedUsers.length}`);
 
       if (connectedUsers.length > 0) {
@@ -153,15 +153,17 @@ io.on('connection', (socket) => {
             socket.join(room);
             io.to(socket.id).emit('joined', room);
 
-            const receiverSocketId = userSocketMap.get(receiverId);
-            const isDeleted = userSocketMap.delete(receiverId);
-
-            if (isDeleted) {
-              await prisma.deviceid.updateMany({
-                where: { id: { in: [parseInt(senderId), parseInt(receiverId)] } },
-                data: { available: false },
-              });
-              io.to(receiverSocketId).emit('roomReady', room);
+            const receiverSocketId = userSocketMap[receiverId]; // Accessing value using bracket notation
+            if(receiverSocketId)
+            {
+              const isDeleted = delete userSocketMap[receiverId]; // Deleting the property using the delete operator
+              if (isDeleted) {
+                await prisma.deviceid.updateMany({
+                  where: { id: { in: [parseInt(senderId), parseInt(receiverId)] } },
+                  data: { available: false },
+                });
+                io.to(receiverSocketId).emit('roomReady', room);
+              }
             }
           } else {
             console.log(`Socket ${socket.id} is already in a room`);
@@ -171,7 +173,7 @@ io.on('connection', (socket) => {
       } else {
         // Only add to map if not already in a room
         if (socket.rooms.size === 1) {
-          userSocketMap.set(senderId, socket.id);
+          userSocketMap[senderId] = socket.id;  // For Object
           io.to(socket.id).emit('searching');
         }
       }
@@ -254,7 +256,7 @@ io.on('connection', (socket) => {
         }
       }
 
-      let connectedUsers = Array.from(userSocketMap.keys());
+      let connectedUsers = Object.keys(userSocketMap);
       const previousUsers = room.split('-').map(part => parseInt(part, 10));
       connectedUsers = connectedUsers.filter(item => !previousUsers.includes(item));
 
@@ -271,14 +273,17 @@ io.on('connection', (socket) => {
             io.to(socket.id).emit('joined', newRoom);
 
             const receiverSocketId = userSocketMap.get(receiverId);
-            const isDeleted = userSocketMap.delete(receiverId);
+            if(receiverSocketId)
+            {
+              const isDeleted = delete userSocketMap[receiverId]; // Deleting the property using the delete operator
+              if (isDeleted) {
+                await prisma.deviceid.updateMany({
+                  where: { id: { in: [parseInt(senderId), parseInt(receiverId)] } },
+                  data: { available: false },
+                });
+                io.to(receiverSocketId).emit('roomReady', room);
+              }
 
-            if (isDeleted) {
-              await prisma.deviceid.updateMany({
-                where: { id: { in: [parseInt(senderId), parseInt(receiverId)] } },
-                data: { available: false },
-              });
-              io.to(receiverSocketId).emit('roomReady', newRoom);
             }
           } else {
             console.log(`Socket ${socket.id} is already in a room`);
@@ -301,11 +306,11 @@ io.on('connection', (socket) => {
     try {
       const key = findKeyByValue(userSocketMap, socket.id);
       if (key) {
-        var usersWaiting = Array.from(userSocketMap.keys());
+        var usersWaiting = Object.keys(userSocketMap);
         console.log(`${key} to stop searchc for the ${socket.id}, usersWaiting : ${usersWaiting}`)
         console.log(`Stopping search for user: ${key}`);
-        userSocketMap.delete(key);
-        usersWaiting = Array.from(userSocketMap.keys());
+        delete userSocketMap[key];
+        usersWaiting = Object.keys(userSocketMap);
         console.log(`Stopped search for the ${socket.id}, usersWaiting : ${usersWaiting}`)
         socket.emit('stoppedSearch');
       } else {
@@ -327,7 +332,7 @@ io.on('connection', (socket) => {
       if(key)
       {
         console.log(key)
-        userSocketMap.delete(key)
+        delete userSocketMap[key]
         console.log(`Deleted disconnected socket from the user map`);
       }
       if(room)
