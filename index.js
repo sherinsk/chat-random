@@ -279,7 +279,7 @@ io.on('connection', (socket) => {
             socket.join(newRoom);
             io.to(socket.id).emit('joined', newRoom);
 
-            const receiverSocketId = userSocketMap.get(receiverId);
+            const receiverSocketId = userSocketMap[receiverId];
             if(receiverSocketId)
             {
               const isDeleted = delete userSocketMap[receiverId]; // Deleting the property using the delete operator
