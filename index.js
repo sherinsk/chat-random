@@ -9,12 +9,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "*", // Allow all origins for development purposes; adjust for production
     methods: ["GET", "POST"]
   }
 });
 
-let userSocketMap = new Map();
+var userSocketMap = new Map();
 
 app.use(express.json());
 app.set('views', __dirname + '/public/views');
@@ -39,6 +39,7 @@ app.post('/api/deviceid', async (req, res) => {
 
     const device = await prisma.deviceid.create({ data: { deviceid, available: false } });
     res.status(201).json({ status: 'true', device });
+
   } catch (error) {
     console.error('Error creating or retrieving device ID:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -63,6 +64,7 @@ app.post('/api/appclose', async (req, res) => {
     });
 
     res.status(200).json({ status: 'true', device: updatedDevice });
+
   } catch (error) {
     console.error('Error closing app for device ID:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -112,16 +114,6 @@ app.post('/api/deviceid/report', async (req, res) => {
 io.on('connection', (socket) => {
   console.log(`A user connected: ${socket.id}`);
 
-  // Helper function to ensure user leaves any previous room
-  const leaveAllRooms = (socket) => {
-    const rooms = Array.from(socket.rooms);
-    rooms.forEach(room => {
-      if (room !== socket.id) {  // Leave any room that is not the socket's own ID
-        socket.leave(room);
-      }
-    });
-  };
-
   socket.on('registerorjoin', async (deviceId) => {
     try {
       const device = await prisma.deviceid.findUnique({ where: { deviceid: deviceId } });
@@ -129,6 +121,7 @@ io.on('connection', (socket) => {
 
       if (device && device.blocked) {
         const currentDate = new Date();
+
         if (device.blockedUntil && currentDate < device.blockedUntil) {
           console.log(`Device ${deviceId} is blocked until ${device.blockedUntil}. Connection denied.`);
           socket.emit('connectionDenied', { message: 'Your device is blocked' });
@@ -142,9 +135,6 @@ io.on('connection', (socket) => {
         }
       }
 
-      // Ensure the user is not in any existing room
-      leaveAllRooms(socket);
-
       const connectedUsers = Array.from(userSocketMap.keys());
       console.log(`Number of users connected in joining: ${connectedUsers.length}`);
 
@@ -155,10 +145,9 @@ io.on('connection', (socket) => {
         if (receiverId !== senderId) {
           const room = [senderId, receiverId].sort().join('-');
 
-          // Check if the room has less than 2 participants
-          const socketsInRoom = await io.in(room).fetchSockets();
-          if (socketsInRoom.length < 2) {
-            // Join the room
+          // Check if socket is in any room
+          if (socket.rooms.size === 1) {
+            // Socket is not in any room, so join the room
             socket.join(room);
             io.to(socket.id).emit('joined', room);
 
@@ -173,21 +162,44 @@ io.on('connection', (socket) => {
               io.to(receiverSocketId).emit('roomReady', room);
             }
           } else {
-            io.to(socket.id).emit('roomFull', { message: 'Room already has 2 participants' });
+            console.log(`Socket ${socket.id} is already in a room`);
+            io.to(socket.id).emit('alreadyInRoom');
           }
         }
       } else {
-        userSocketMap.set(senderId, socket.id);
-        io.to(socket.id).emit('searching');
+        // Only add to map if not already in a room
+        if (socket.rooms.size === 1) {
+          userSocketMap.set(senderId, socket.id);
+          console.log(userSocketMap);
+          io.to(socket.id).emit('searching');
+        }
       }
     } catch (error) {
       console.error('Error during join:', error);
     }
   });
 
+  socket.on('joinRoom', (room) => {
+    try {
+      // Check if socket is in any room
+      if (socket.rooms.size === 1) {
+        // Socket is not in any room, so join the room
+        socket.join(room);
+        io.to(socket.id).emit('joined', room);
+      } else {
+        console.log(`Socket ${socket.id} is already in a room`);
+        io.to(socket.id).emit('alreadyInRoom');
+      }
+    } catch (err) {
+      console.error('Error joining room:', err);
+    }
+  });
+
   socket.on('message', async ({ message, deviceId, room }) => {
     try {
+      console.log(`Received message for room ${room}:`, { message, deviceId });
       io.to(room).emit('message', { message, deviceId });
+      console.log(`Message sent to room ${room}: ${message}`);
     } catch (error) {
       console.error('Error sending message:', error);
     }
@@ -195,19 +207,28 @@ io.on('connection', (socket) => {
 
   socket.on('skip', async (room) => {
     try {
+      // Emit a clearChat message to the room
       io.to(room).emit('clearChat');
+
+      // Optional: Wait a short time to ensure clients process the clearChat message
       await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Fetch all sockets in the room
       const socketsInRoom = await io.in(room).fetchSockets();
       const socketIds = socketsInRoom.map(socketInRoom => socketInRoom.id);
 
-      // Remove users from the room before rejoining
+      // Make each socket leave the room
       socketsInRoom.forEach(socketInRoom => {
         socketInRoom.leave(room);
+        console.log(`Socket with ID ${socketInRoom.id} has left the room: ${room}`);
       });
 
+      // Emit reJoin event to each of the sockets that left the room
       socketIds.forEach(socketId => {
         io.to(socketId).emit('reJoin', room);
+        console.log(`Socket with ID ${socketId} has been skipped and trying to rejoin with another room`);
       });
+
     } catch (error) {
       console.error('Error handling skip:', error);
     }
@@ -218,8 +239,19 @@ io.on('connection', (socket) => {
       const device = await prisma.deviceid.findUnique({ where: { deviceid: deviceId } });
       const senderId = device.id;
 
-      // Leave any previous room before rejoining
-      leaveAllRooms(socket);
+      if (device && device.blocked) {
+        const currentDate = new Date();
+
+        if (device.blockedUntil && currentDate < device.blockedUntil) {
+          socket.emit('connectionDenied', { message: 'Your device is blocked' });
+          return;
+        } else {
+          await prisma.deviceid.update({
+            where: { deviceid: deviceId },
+            data: { blocked: false, blockedUntil: null }
+          });
+        }
+      }
 
       let connectedUsers = Array.from(userSocketMap.keys());
       const previousUsers = room.split('-').map(part => parseInt(part, 10));
@@ -228,52 +260,53 @@ io.on('connection', (socket) => {
       if (connectedUsers.length > 0) {
         const randomIndex = Math.floor(Math.random() * connectedUsers.length);
         const receiverId = connectedUsers[randomIndex];
-        if (senderId !== receiverId) {
+        if (receiverId !== senderId) {
           const newRoom = [senderId, receiverId].sort().join('-');
+          socket.join(newRoom);
+          io.to(socket.id).emit('joined', newRoom);
 
-          // Check room size before joining
-          const socketsInRoom = await io.in(newRoom).fetchSockets();
-          if (socketsInRoom.length < 2) {
-            socket.join(newRoom);
-            io.to(socket.id).emit('joined', newRoom);
+          const receiverSocketId = userSocketMap.get(receiverId);
+          const isDeleted = userSocketMap.delete(receiverId);
 
-            const receiverSocketId = userSocketMap.get(receiverId);
-            userSocketMap.delete(receiverId);
+          if (isDeleted) {
             await prisma.deviceid.updateMany({
               where: { id: { in: [parseInt(senderId), parseInt(receiverId)] } },
               data: { available: false },
             });
             io.to(receiverSocketId).emit('roomReady', newRoom);
-          } else {
-            io.to(socket.id).emit('roomFull', { message: 'Room already has 2 participants' });
           }
         }
       } else {
-        userSocketMap.set(senderId, socket.id);
-        io.to(socket.id).emit('searching');
+        if (socket.rooms.size === 1) {
+          userSocketMap.set(senderId, socket.id);
+          io.to(socket.id).emit('searching');
+        }
       }
     } catch (error) {
-      console.error('Error during rejoin:', error);
+      console.error('Error during reJoin:', error);
     }
   });
 
   socket.on('disconnect', async () => {
-    try {
-      const disconnectedDeviceId = findKeyByValue(userSocketMap, socket.id);
-      if (disconnectedDeviceId) {
-        const removed = userSocketMap.delete(disconnectedDeviceId);
-        if (removed) {
-          await prisma.deviceid.update({ where: { id: parseInt(disconnectedDeviceId) }, data: { available: false } });
-          console.log(`User ${disconnectedDeviceId} disconnected`);
-        }
+    console.log(`Socket ${socket.id} disconnected`);
+    userSocketMap.forEach(async (value, key) => {
+      if (value === socket.id) {
+        userSocketMap.delete(key);
+
+        // Update device status to available
+        await prisma.deviceid.update({
+          where: { id: key },
+          data: { available: true }
+        });
+
+        // Emit reJoin event to all users to pair with a new user
+        io.emit('reJoin', key);
+        console.log(`Socket ${socket.id} has been removed from userSocketMap`);
       }
-    } catch (error) {
-      console.error('Error during disconnect:', error);
-    }
+    });
   });
 });
 
-const PORT = 3000;
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+server.listen(3000, () => {
+  console.log('Server is running on port 3000');
 });
