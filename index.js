@@ -264,8 +264,11 @@ io.on('connection', (socket) => {
       }
 
       let connectedUsers = Object.keys(userSocketMap);
+      console.log("connectedUsers before filtering",connectedUsers)
       const previousUsers = room.split('-').map(part => parseInt(part, 10));
       connectedUsers = connectedUsers.filter(item => !previousUsers.includes(item));
+      console.log("connectedUsers after filtering",connectedUsers)
+
 
       if (connectedUsers.length > 0) {
         const randomIndex = Math.floor(Math.random() * connectedUsers.length);
