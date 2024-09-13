@@ -151,6 +151,7 @@ io.on('connection', (socket) => {
           if (socket.rooms.size === 1) {
             // Socket is not in any room, so join the room
             socket.join(room);
+            console.log(`${socket.id} joined the room ${room}`)
             io.to(socket.id).emit('joined', room);
 
             const receiverSocketId = userSocketMap.get(receiverId);
@@ -188,6 +189,7 @@ io.on('connection', (socket) => {
         // Socket is not in any room, so join the room
         socket.join(room);
         io.to(socket.id).emit('joined', room);
+        console.log(`${socket.id} joined the room ${room}`)
       } else {
         console.log(`Socket ${socket.id} is already in a room`);
         io.to(socket.id).emit('alreadyInRoom');
