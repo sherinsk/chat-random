@@ -1,5 +1,6 @@
-function findKeyByValue(obj, value) {
-    for (const [key, val] of Object.entries(obj)) {
+// utils.js
+function findKeyByValue(map, value) {
+    for (const [key, val] of map.entries()) {
         if (val === value) {
             return key;
         }
